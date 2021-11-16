@@ -34,6 +34,8 @@ int main(int argc, char* argv[]) {
     for (int i = 0 ; i < K ; i++) {
         if ((pid = fork()) == 0) {
             execv("./child", newargv);
+            perror("exec failed");
+            exit(EXIT_FAILURE);
         }
         else if (pid < 0) {
             perror("fork failed");
