@@ -21,6 +21,10 @@ int main(int argc, char* argv[]) {
             num_lines++;
         }
     }
+    else {
+        perror("open failed");
+        exit(EXIT_FAILURE);
+    }
     text_file.clear();
     text_file.seekg(0);
     cout << "This is the parent: " << K << ", " << N << ", " << num_lines << endl;
