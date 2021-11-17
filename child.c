@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include <semaphore.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -15,9 +16,8 @@ struct shared_use_st {
 };
 
 int main(int argc, char* argv[]) {
-    int X = atoi(argv[1]), N = atoi(argv[2]);
-    printf("This is the child: %d, %d\n", X, N);
-    sleep(1);
+    int num_lines = atoi(argv[1]), N = atoi(argv[2]);
+    printf("This is the child: %d, %d\n", num_lines, N);
 	void *shared_memory = (void *)0;
 	struct shared_use_st *shared_stuff;
 	int shmid;
@@ -52,12 +52,15 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+	clock_t start, end;
+	double average_time = 0;
 	for (int i = 0 ; i < N ; i++) {
-		int line = rand() % X;
+		int line = rand() % num_lines;
         if (sem_wait(semaphore_request) < 0) {
             perror("sem_wait (semaphore_request) failed on child");
 		    exit(EXIT_FAILURE);
         }
+		start = clock();
     	sprintf(shared_stuff->shared_text, "%d", line);
 		printf("Asked line %d\n", line);
         if (sem_post(semaphore_response) < 0) {
@@ -67,11 +70,16 @@ int main(int argc, char* argv[]) {
             perror("sem_wait (semaphore_read_response) failed on child");
 		    exit(EXIT_FAILURE);
         }
+		end = clock();
 		printf("%s", shared_stuff->shared_text);
         if (sem_post(semaphore_request) < 0) {
             perror("sem_post (semaphore_request) error on child");
         }
+		average_time += (double)(end - start) / CLOCKS_PER_SEC;
 	}
+
+	average_time /= N;
+	printf("Average time: %fs\n", average_time);
 
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
