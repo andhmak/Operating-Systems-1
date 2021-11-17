@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include <sys/shm.h>
 
+#define LINE_BUF 10
+
 struct shared_use_st {
 	char shared_text[100];
 };
@@ -31,9 +33,35 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
-
 	shared_stuff = (struct shared_use_st *)shared_memory;
+
+
+    sem_t *semaphore_request = sem_open("request", O_RDWR);
+	sem_t *semaphore_response = sem_open("response", O_RDWR);
+    if (semaphore_request == SEM_FAILED) {
+        perror("sem_open (semaphore_request) error");
+        exit(EXIT_FAILURE);
+    }
+    if (semaphore_response == SEM_FAILED) {
+        perror("sem_open (semaphore_response) error");
+        exit(EXIT_FAILURE);
+    }
+
+	for (int i = 0 ; i < N ; i++) {
+		int line = rand() % X;
+    	sprintf(shared_stuff->shared_text, "%d", line);
+	}
+
     printf("%s\n", shared_stuff->shared_text);
+
+    if (sem_close(semaphore_request) < 0) {
+        perror("sem_close (semaphore_request) failed");
+        exit(EXIT_FAILURE);
+    }
+    if (sem_close(semaphore_response) < 0) {
+        perror("sem_close (semaphore_response) failed");
+        exit(EXIT_FAILURE);
+    }
 
 	if (shmdt(shared_memory) == -1) {
 		fprintf(stderr, "shmdt failed\n");

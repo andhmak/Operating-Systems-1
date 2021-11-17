@@ -82,8 +82,16 @@ int main(int argc, char* argv[]) {
             printf("Fork %d returned %d\n", i, pid);
         }
     }
+    
+    fgets(shared_stuff->shared_text, MAX_LINE, text_file);
 
-	fgets(shared_stuff->shared_text, MAX_LINE, text_file);
+    for (int i = 0 ; i < K*N ; i++) {
+        if (sem_wait(semaphore_response) < 0) {
+            perror("sem_wait (semaphore_response) failed on parent");
+		    exit(EXIT_FAILURE);
+        }
+        num_lines = atoi(shared_stuff->shared_text);
+    }
 
 	if (shmdt(shared_memory) == -1) {
 		fprintf(stderr, "shmdt failed\n");
@@ -99,13 +107,11 @@ int main(int argc, char* argv[]) {
 	}
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
-        /* We ignore possible sem_unlink(3) errors here */
         sem_unlink("request");
         exit(EXIT_FAILURE);
     }
     if (sem_close(semaphore_response) < 0) {
         perror("sem_close (semaphore_response) failed");
-        /* We ignore possible sem_unlink(3) errors here */
         sem_unlink("response");
         exit(EXIT_FAILURE);
     }
