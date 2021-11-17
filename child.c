@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
 
     sem_t *semaphore_request = sem_open("request", O_RDWR);
 	sem_t *semaphore_response = sem_open("response", O_RDWR);
+	sem_t *semaphore_read_response = sem_open("read_response", O_RDWR);
     if (semaphore_request == SEM_FAILED) {
         perror("sem_open (semaphore_request) error");
         exit(EXIT_FAILURE);
@@ -46,13 +47,31 @@ int main(int argc, char* argv[]) {
         perror("sem_open (semaphore_response) error");
         exit(EXIT_FAILURE);
     }
+    if (semaphore_read_response == SEM_FAILED) {
+        perror("sem_open (semaphore_read_response) error");
+        exit(EXIT_FAILURE);
+    }
 
 	for (int i = 0 ; i < N ; i++) {
 		int line = rand() % X;
+        if (sem_wait(semaphore_request) < 0) {
+            perror("sem_wait (semaphore_request) failed on child");
+		    exit(EXIT_FAILURE);
+        }
     	sprintf(shared_stuff->shared_text, "%d", line);
+		printf("Asked line %d\n", line);
+        if (sem_post(semaphore_response) < 0) {
+            perror("sem_post (semaphore_response) error on child");
+        }
+        if (sem_wait(semaphore_read_response) < 0) {
+            perror("sem_wait (semaphore_read_response) failed on child");
+		    exit(EXIT_FAILURE);
+        }
+		printf("%s", shared_stuff->shared_text);
+        if (sem_post(semaphore_request) < 0) {
+            perror("sem_post (semaphore_request) error on child");
+        }
 	}
-
-    printf("%s\n", shared_stuff->shared_text);
 
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
@@ -60,6 +79,10 @@ int main(int argc, char* argv[]) {
     }
     if (sem_close(semaphore_response) < 0) {
         perror("sem_close (semaphore_response) failed");
+        exit(EXIT_FAILURE);
+    }
+    if (sem_close(semaphore_read_response) < 0) {
+        perror("sem_close (semaphore_read_response) failed");
         exit(EXIT_FAILURE);
     }
 
