@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 		fprintf(stderr, "shmat failed\n");
 		exit(EXIT_FAILURE);
 	}
-	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
+//	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
 	shared_stuff = (struct shared_use_st *)shared_memory;
 
 
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
         }
 		start = clock();
     	sprintf(shared_stuff->shared_text, "%d", line);
-		printf("Asked line %d\n", line);
+//		printf("Asked line %d\n", line);
         if (sem_post(semaphore_response) < 0) {
             perror("sem_post (semaphore_response) error on child");
         }
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 		    exit(EXIT_FAILURE);
         }
 		end = clock();
-		printf("%s", shared_stuff->shared_text);
+//		printf("%s", shared_stuff->shared_text);
         if (sem_post(semaphore_request) < 0) {
             perror("sem_post (semaphore_request) error on child");
         }
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	average_time /= N;
-	printf("Average time: %fs\n", average_time);
+	printf("Child process %d experienced an average response time of %fs.\n", getpid(), average_time);
 
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");

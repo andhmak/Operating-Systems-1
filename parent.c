@@ -48,12 +48,12 @@ int main(int argc, char* argv[]) {
 		fprintf(stderr, "shmat failed\n");
 		exit(EXIT_FAILURE);
 	}
-	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
+//	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
     shared_stuff = (struct shared_use_st *)shared_memory;
 
-    sem_t *semaphore_request = sem_open("request", O_CREAT, SEM_PERMS, 1);
-    sem_t *semaphore_response = sem_open("response", O_CREAT, SEM_PERMS, 0);
-    sem_t *semaphore_read_response = sem_open("read_response", O_CREAT, SEM_PERMS, 0);
+    sem_t *semaphore_request = sem_open("request", O_CREAT | O_EXCL, SEM_PERMS, 1);
+    sem_t *semaphore_response = sem_open("response", O_CREAT | O_EXCL, SEM_PERMS, 0);
+    sem_t *semaphore_read_response = sem_open("read_response", O_CREAT | O_EXCL, SEM_PERMS, 0);
 
     if (semaphore_request == SEM_FAILED) {
         perror("sem_open (semaphore_request) error");
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
         else {
-            printf("Fork %d returned %d\n", i, pid);
+//            printf("Fork %d returned %d\n", i, pid);
         }
     }
 
