@@ -98,19 +98,24 @@ int main(int argc, char* argv[]) {
 
     /* Giving requested lines */
     for (int i = 0 ; i < K*N ; i++) {
+        // Wait for response to be requested
         if (sem_wait(semaphore_response) < 0) {
             perror("sem_wait (semaphore_response) failed on parent");
 		    exit(EXIT_FAILURE);
         }
+        // Read the line requested from the shared memory
         num_lines = atoi(shared_stuff->shared_text);
+        // Get that line into the shared memory
         for (int j = 0 ; j <= num_lines ; j++) {
             fgets(shared_stuff->shared_text, MAX_LINE, text_file);
         }
-        void rewind(FILE *f);   
-        rewind(text_file);
+        // Allow reading of response
         if (sem_post(semaphore_read_response) < 0) {
             perror("sem_post (semaphore_read_response) error on child");
         }
+        // Return to the start of the file
+        void rewind(FILE *f);   
+        rewind(text_file);
     }
 
     /* Closing semaphores */
@@ -160,5 +165,6 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+    /* Exiting successfully */
     exit(EXIT_SUCCESS);
 }

@@ -23,11 +23,13 @@ int main(int argc, char* argv[]) {
     int num_lines = atoi(argv[1]), N = atoi(argv[2]);
 //    printf("This is the child: %d, %d\n", num_lines, N);
 
+	/* Initialising rand() */
+	srand((unsigned int)getpid());
+
 	/* Initialising shared memory */
 	void *shared_memory = (void *)0;
 	struct shared_use_st *shared_stuff;
 	int shmid;
-	srand((unsigned int)getpid());
 	shmid = shmget((key_t)1234, 100*sizeof(char), 0666 | IPC_CREAT);
 	if (shmid == -1) {
 		fprintf(stderr, "shmget failed\n");
@@ -62,30 +64,42 @@ int main(int argc, char* argv[]) {
 	clock_t start, end;
 	double average_time = 0;
 	for (int i = 0 ; i < N ; i++) {
+		// Choose a random line to request
 		int line = rand() % num_lines;
+		// Wait for any other transaction then start a request
         if (sem_wait(semaphore_request) < 0) {
             perror("sem_wait (semaphore_request) failed on child");
 		    exit(EXIT_FAILURE);
         }
+		// Get line requested into the shared memory
     	sprintf(shared_stuff->shared_text, "%d", line);
 		printf("Process %d asked for line %d\n", getpid(), line + 1); // numbering starting from 1
+		// Start counting time from request
 		start = clock();
+		// Allow parent to respond
         if (sem_post(semaphore_response) < 0) {
             perror("sem_post (semaphore_response) error on child");
         }
+		// Wait for response
         if (sem_wait(semaphore_read_response) < 0) {
             perror("sem_wait (semaphore_read_response) failed on child");
 		    exit(EXIT_FAILURE);
         }
+		// Stop counting time
 		end = clock();
+		// Read requested line from shared memory
 		printf("Process %d got:\n%s\n", getpid(), shared_stuff->shared_text);
+		// Allow another child to start a transaction
         if (sem_post(semaphore_request) < 0) {
             perror("sem_post (semaphore_request) error on child");
         }
+		// Add waiting time calculated to total
 		average_time += (double)(end - start) / CLOCKS_PER_SEC;
 	}
 
+	// Divide time by number of requests to get the average
 	average_time /= N;
+	// Print the average time
 	printf("Child process %d experienced an average response time of %fs.\n", getpid(), average_time);
 
 	/* CLosing semaphores */
