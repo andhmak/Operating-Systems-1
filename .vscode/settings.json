@@ -2,6 +2,8 @@
     "files.associations": {
         "algorithm": "cpp",
         "fstream": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "condition_variable": "c",
+        "future": "c"
     }
 }

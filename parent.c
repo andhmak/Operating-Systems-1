@@ -1,3 +1,5 @@
+/* File: parent.c */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,23 +20,27 @@ struct shared_use_st {
 };
 
 int main(int argc, char* argv[]) {
+	/* Initialising arguments */
     char* X = argv[1];
     FILE* text_file = fopen(X,"rb");
-    if(text_file == NULL) {
+    if (text_file == NULL) {
         printf("fopen failed");
         exit(EXIT_FAILURE);
     }
     int K = atoi(argv[2]), N = atoi(argv[3]);
+
+    /* Counting lines */
     char ch;
     int num_lines = 1;
-    while((ch = fgetc(text_file)) != EOF) {
+    while ((ch = fgetc(text_file)) != EOF) {
         if(ch=='\n')
             num_lines++;
     }
     void rewind(FILE *f);   
     rewind(text_file);
-    printf("This is the parent: %d, %d, %d\n", K, N, num_lines);
+//    printf("This is the parent: %d, %d, %d\n", K, N, num_lines);
 
+    /* Initialising shared memory */
     struct shared_use_st *shared_stuff;
 	void *shared_memory = (void *)0;
 	int shmid;
@@ -51,6 +57,7 @@ int main(int argc, char* argv[]) {
 //	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
     shared_stuff = (struct shared_use_st *)shared_memory;
 
+    /* Initialising semaphores */
     sem_t *semaphore_request = sem_open("request", O_CREAT | O_EXCL, SEM_PERMS, 1);
     sem_t *semaphore_response = sem_open("response", O_CREAT | O_EXCL, SEM_PERMS, 0);
     sem_t *semaphore_read_response = sem_open("read_response", O_CREAT | O_EXCL, SEM_PERMS, 0);
@@ -68,6 +75,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    /* Creating children */
     char num_lines_str[ARG_BUFF], N_str[ARG_BUFF];
     sprintf(num_lines_str, "%d", num_lines);
     sprintf(N_str, "%d", N);
@@ -88,6 +96,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    /* Giving requested lines */
     for (int i = 0 ; i < K*N ; i++) {
         if (sem_wait(semaphore_response) < 0) {
             perror("sem_wait (semaphore_response) failed on parent");
@@ -104,18 +113,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-	if (shmdt(shared_memory) == -1) {
-		fprintf(stderr, "shmdt failed\n");
-		exit(EXIT_FAILURE);
-	}
-    int status;
-    for (int i = 0 ; i < K ; i++) {
-        printf("Process %d returning.\n", wait(&status));
-    }
-	if (shmctl(shmid, IPC_RMID, 0) == -1) {
-		fprintf(stderr, "shmctl(IPC_RMID) failed\n");
-		exit(EXIT_FAILURE);
-	}
+    /* Closing semaphores */
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
         sem_unlink("request");
@@ -131,6 +129,21 @@ int main(int argc, char* argv[]) {
         sem_unlink("read_response");
         exit(EXIT_FAILURE);
     }
+
+    /* Detaching shared memory */
+	if (shmdt(shared_memory) == -1) {
+		fprintf(stderr, "shmdt failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+    /* Waiting for children and collecting their return codes */
+    int status, child_id;
+    for (int i = 0 ; i < K ; i++) {
+        child_id = wait(&status);
+        printf("Process %d returning with code %d.\n", child_id, status);
+    }
+
+    /* Unlinking semaphores */
     if (sem_unlink("request") < 0) {
         perror("sem_unlink (semaphore_request) failed");
     }
@@ -140,6 +153,12 @@ int main(int argc, char* argv[]) {
     if (sem_unlink("read_response") < 0) {
         perror("sem_unlink (semaphore_read_response) failed");
     }
+
+    /* "Deleting" shared memory */
+	if (shmctl(shmid, IPC_RMID, 0) == -1) {
+		fprintf(stderr, "shmctl(IPC_RMID) failed\n");
+		exit(EXIT_FAILURE);
+	}
 
     exit(EXIT_SUCCESS);
 }

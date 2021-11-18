@@ -1,3 +1,5 @@
+/* File: child.c */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,14 +12,18 @@
 #include <sys/shm.h>
 
 #define LINE_BUF 10
+#define MAX_LINE 100
 
 struct shared_use_st {
-	char shared_text[100];
+	char shared_text[MAX_LINE];
 };
 
 int main(int argc, char* argv[]) {
+	/* Initialising arguments */
     int num_lines = atoi(argv[1]), N = atoi(argv[2]);
-    printf("This is the child: %d, %d\n", num_lines, N);
+//    printf("This is the child: %d, %d\n", num_lines, N);
+
+	/* Initialising shared memory */
 	void *shared_memory = (void *)0;
 	struct shared_use_st *shared_stuff;
 	int shmid;
@@ -35,7 +41,7 @@ int main(int argc, char* argv[]) {
 //	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
 	shared_stuff = (struct shared_use_st *)shared_memory;
 
-
+	/* Initialising semaphores */
     sem_t *semaphore_request = sem_open("request", O_RDWR);
 	sem_t *semaphore_response = sem_open("response", O_RDWR);
 	sem_t *semaphore_read_response = sem_open("read_response", O_RDWR);
@@ -52,6 +58,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+	/* Requesting for lines */
 	clock_t start, end;
 	double average_time = 0;
 	for (int i = 0 ; i < N ; i++) {
@@ -60,9 +67,9 @@ int main(int argc, char* argv[]) {
             perror("sem_wait (semaphore_request) failed on child");
 		    exit(EXIT_FAILURE);
         }
-		start = clock();
     	sprintf(shared_stuff->shared_text, "%d", line);
-//		printf("Asked line %d\n", line);
+		printf("Process %d asked for line %d\n", getpid(), line + 1); // numbering starting from 1
+		start = clock();
         if (sem_post(semaphore_response) < 0) {
             perror("sem_post (semaphore_response) error on child");
         }
@@ -71,7 +78,7 @@ int main(int argc, char* argv[]) {
 		    exit(EXIT_FAILURE);
         }
 		end = clock();
-//		printf("%s", shared_stuff->shared_text);
+		printf("Process %d got:\n%s\n", getpid(), shared_stuff->shared_text);
         if (sem_post(semaphore_request) < 0) {
             perror("sem_post (semaphore_request) error on child");
         }
@@ -81,6 +88,7 @@ int main(int argc, char* argv[]) {
 	average_time /= N;
 	printf("Child process %d experienced an average response time of %fs.\n", getpid(), average_time);
 
+	/* CLosing semaphores */
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
         exit(EXIT_FAILURE);
@@ -94,9 +102,12 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+	/* Detaching shared memory */
 	if (shmdt(shared_memory) == -1) {
 		fprintf(stderr, "shmdt failed\n");
 		exit(EXIT_FAILURE);
 	}
+
+	/* Exiting successfully */
     exit(EXIT_SUCCESS);
 }
