@@ -85,10 +85,18 @@ int main(int argc, char* argv[]) {
         if ((pid = fork()) == 0) {
             execv("./child", newargv);
             perror("exec failed");
+            // Unlinking semaphores before exiting
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
             exit(EXIT_FAILURE);
         }
         else if (pid < 0) {
             perror("fork failed");
+            // Unlinking semaphores before exiting
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
             exit(EXIT_FAILURE);
         }
         else {
@@ -101,6 +109,10 @@ int main(int argc, char* argv[]) {
         // Wait for response to be requested
         if (sem_wait(semaphore_response) < 0) {
             perror("sem_wait (semaphore_response) failed on parent");
+            // Unlinking semaphores before exiting
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
 		    exit(EXIT_FAILURE);
         }
         // Read the line requested from the shared memory
@@ -111,7 +123,12 @@ int main(int argc, char* argv[]) {
         }
         // Allow reading of response
         if (sem_post(semaphore_read_response) < 0) {
-            perror("sem_post (semaphore_read_response) error on child");
+            perror("sem_post (semaphore_read_response) error on parent");
+            // Unlinking semaphores before exiting
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
+		    exit(EXIT_FAILURE);
         }
         // Return to the start of the file
         void rewind(FILE *f);   
@@ -121,16 +138,25 @@ int main(int argc, char* argv[]) {
     /* Closing semaphores */
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
+        // Unlinking semaphores before exiting
         sem_unlink("request");
+        sem_unlink("response");
+        sem_unlink("read_response");
         exit(EXIT_FAILURE);
     }
     if (sem_close(semaphore_response) < 0) {
         perror("sem_close (semaphore_response) failed");
+        // Unlinking semaphores before exiting
+        sem_unlink("request");
         sem_unlink("response");
+        sem_unlink("read_response");
         exit(EXIT_FAILURE);
     }
     if (sem_close(semaphore_read_response) < 0) {
         perror("sem_close (semaphore_read_response) failed");
+        // Unlinking semaphores before exiting
+        sem_unlink("request");
+        sem_unlink("response");
         sem_unlink("read_response");
         exit(EXIT_FAILURE);
     }
@@ -138,6 +164,10 @@ int main(int argc, char* argv[]) {
     /* Detaching shared memory */
 	if (shmdt(shared_memory) == -1) {
 		fprintf(stderr, "shmdt failed\n");
+        // Unlinking semaphores before exiting
+        sem_unlink("request");
+        sem_unlink("response");
+        sem_unlink("read_response");
 		exit(EXIT_FAILURE);
 	}
 
@@ -151,12 +181,15 @@ int main(int argc, char* argv[]) {
     /* Unlinking semaphores */
     if (sem_unlink("request") < 0) {
         perror("sem_unlink (semaphore_request) failed");
+		exit(EXIT_FAILURE);
     }
     if (sem_unlink("response") < 0) {
         perror("sem_unlink (semaphore_response) failed");
+		exit(EXIT_FAILURE);
     }
     if (sem_unlink("read_response") < 0) {
         perror("sem_unlink (semaphore_read_response) failed");
+		exit(EXIT_FAILURE);
     }
 
     /* "Deleting" shared memory */
