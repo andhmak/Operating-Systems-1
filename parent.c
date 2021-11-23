@@ -107,9 +107,9 @@ int main(int argc, char* argv[]) {
             shmctl(shmid, IPC_RMID, 0);
             exit(EXIT_FAILURE);
         }
-        else {
+//        else {
 //            printf("Fork %d returned %d\n", i, pid);
-        }
+//        }
     }
 
     /* Giving requested lines */
