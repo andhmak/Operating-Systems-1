@@ -22,7 +22,7 @@ struct shared_use_st {
 int main(int argc, char* argv[]) {
 	/* Initialising arguments */
     if (argc != 4) {
-        fprintf(stderr, "invalid number of arguments\n");
+        fprintf(stderr, "Invalid number of arguments\n");
         exit(EXIT_FAILURE);
     }
     char* X = argv[1];
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     }
     int K = atoi(argv[2]), N = atoi(argv[3]);
     if (K < 0 || N < 0) {
-        fprintf(stderr, "no negative arguments allowed\n");
+        fprintf(stderr, "No negative arguments allowed\n");
         exit(EXIT_FAILURE);
     }
 
