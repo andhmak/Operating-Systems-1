@@ -44,9 +44,7 @@ int main(int argc, char* argv[]) {
         if(ch=='\n')
             num_lines++;
     }
-    void rewind(FILE *f);   
     rewind(text_file);
-//    printf("This is the parent: %d, %d, %d\n", K, N, num_lines);
 
     /* Initialising shared memory */
     struct shared_use_st *shared_stuff;
@@ -127,9 +125,6 @@ int main(int argc, char* argv[]) {
             shmctl(shmid, IPC_RMID, 0);
             exit(EXIT_FAILURE);
         }
-//        else {
-//            printf("Fork %d returned %d\n", i, pid);
-//        }
     }
 
     /* Giving requested lines */
@@ -163,10 +158,26 @@ int main(int argc, char* argv[]) {
         // Allow reading of response
         if (sem_post(semaphore_read_response) < 0) {
             perror("sem_post (semaphore_read_response) error on child");
+            // Trying to deallocate resources before exiting with failure
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
+            shmctl(shmid, IPC_RMID, 0);
+		    exit(EXIT_FAILURE);
         }
         // Return to the start of the file
-        void rewind(FILE *f);   
         rewind(text_file);
+    }
+
+    // Closing file
+    if (fclose(text_file) == EOF) {
+        fprintf(stderr, "fclose failed\n");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
+        sem_unlink("response");
+        sem_unlink("read_response");
+        shmctl(shmid, IPC_RMID, 0);
+        exit(EXIT_FAILURE);
     }
 
     /* Closing semaphores */

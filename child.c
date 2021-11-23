@@ -21,7 +21,6 @@ struct shared_use_st {
 int main(int argc, char* argv[]) {
 	/* Initialising arguments */
     int num_lines = atoi(argv[1]), N = atoi(argv[2]);
-//    printf("This is the child: %d, %d\n", num_lines, N);
 
 	/* Initialising rand() */
 	srand((unsigned int)getpid());
@@ -32,15 +31,18 @@ int main(int argc, char* argv[]) {
 	int shmid;
 	shmid = shmget((key_t)1234, 100*sizeof(char), 0666 | IPC_CREAT);
 	if (shmid == -1) {
+		// Memory and semaphores haven't been initialised yet,
+		// so error can't be communicated to parent process
 		fprintf(stderr, "shmget failed\n");
 		exit(EXIT_FAILURE);
 	}
 	shared_memory = shmat(shmid, (void *)0, 0);
 	if (shared_memory == (void *)-1) {
+		// Memory and semaphores haven't been initialised yet,
+		// so error can't be communicated to parent process
 		fprintf(stderr, "shmat failed\n");
 		exit(EXIT_FAILURE);
 	}
-//	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
 	shared_stuff = (struct shared_use_st *)shared_memory;
 
 	/* Initialising semaphores */
@@ -48,14 +50,20 @@ int main(int argc, char* argv[]) {
 	sem_t *semaphore_response = sem_open("response", O_RDWR);
 	sem_t *semaphore_read_response = sem_open("read_response", O_RDWR);
     if (semaphore_request == SEM_FAILED) {
+		// Semaphores haven't been initialised yet,
+		// so error can't be communicated to parent process
         perror("sem_open (semaphore_request) error");
         exit(EXIT_FAILURE);
     }
     if (semaphore_response == SEM_FAILED) {
+		// Semaphores haven't been initialised yet,
+		// so error can't be communicated to parent process
         perror("sem_open (semaphore_response) error");
         exit(EXIT_FAILURE);
     }
     if (semaphore_read_response == SEM_FAILED) {
+		// Semaphores haven't been initialised yet,
+		// so error can't be communicated to parent process
         perror("sem_open (semaphore_read_response) error");
         exit(EXIT_FAILURE);
     }
@@ -68,7 +76,8 @@ int main(int argc, char* argv[]) {
 		int line = rand() % num_lines;
 		// Wait for any other transaction then start a request
         if (sem_wait(semaphore_request) < 0) {
-			// If sem_wait fails we can't communicate effectively, so exit error couldn't be signaled
+			// If sem_wait fails we can't communicate effectively,
+			// so exit error couldn't be signaled to parent.
             perror("sem_wait (semaphore_request) failed on child");
         }
 		// Get line requested into the shared memory
