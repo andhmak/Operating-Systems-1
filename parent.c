@@ -52,6 +52,8 @@ int main(int argc, char* argv[]) {
 	shared_memory = shmat(shmid, (void *)0, 0);
 	if (shared_memory == (void *)-1) {
 		fprintf(stderr, "shmat failed\n");
+        // Trying to deallocate resources before exiting with failure
+        shmctl(shmid, IPC_RMID, 0);
 		exit(EXIT_FAILURE);
 	}
 //	printf("Shared memory segment with id %d attached at %p\n", shmid, shared_memory);
@@ -64,14 +66,23 @@ int main(int argc, char* argv[]) {
 
     if (semaphore_request == SEM_FAILED) {
         perror("sem_open (semaphore_request) error");
+        // Trying to deallocate resources before exiting with failure
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
     if (semaphore_response == SEM_FAILED) {
         perror("sem_open (semaphore_response) error");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
     if (semaphore_read_response == SEM_FAILED) {
         perror("sem_open (semaphore_read_response) error");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
+        sem_unlink("response");
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
 
@@ -89,6 +100,11 @@ int main(int argc, char* argv[]) {
         }
         else if (pid < 0) {
             perror("fork failed");
+            // Trying to deallocate resources before exiting with failure
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
+            shmctl(shmid, IPC_RMID, 0);
             exit(EXIT_FAILURE);
         }
         else {
@@ -101,6 +117,11 @@ int main(int argc, char* argv[]) {
         // Wait for response to be requested
         if (sem_wait(semaphore_response) < 0) {
             perror("sem_wait (semaphore_response) failed on parent");
+            // Trying to deallocate resources before exiting with failure
+            sem_unlink("request");
+            sem_unlink("response");
+            sem_unlink("read_response");
+            shmctl(shmid, IPC_RMID, 0);
 		    exit(EXIT_FAILURE);
         }
         // Read the line requested from the shared memory
@@ -121,23 +142,40 @@ int main(int argc, char* argv[]) {
     /* Closing semaphores */
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");
+        // Trying to deallocate resources before exiting with failure
         sem_unlink("request");
+        sem_unlink("response");
+        sem_unlink("read_response");
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
     if (sem_close(semaphore_response) < 0) {
         perror("sem_close (semaphore_response) failed");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
         sem_unlink("response");
+        sem_unlink("read_response");
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
     if (sem_close(semaphore_read_response) < 0) {
         perror("sem_close (semaphore_read_response) failed");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
+        sem_unlink("response");
         sem_unlink("read_response");
+        shmctl(shmid, IPC_RMID, 0);
         exit(EXIT_FAILURE);
     }
 
     /* Detaching shared memory */
 	if (shmdt(shared_memory) == -1) {
 		fprintf(stderr, "shmdt failed\n");
+        // Trying to deallocate resources before exiting with failure
+        sem_unlink("request");
+        sem_unlink("response");
+        sem_unlink("read_response");
+        shmctl(shmid, IPC_RMID, 0);
 		exit(EXIT_FAILURE);
 	}
 
