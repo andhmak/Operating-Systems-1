@@ -68,8 +68,8 @@ int main(int argc, char* argv[]) {
 		int line = rand() % num_lines;
 		// Wait for any other transaction then start a request
         if (sem_wait(semaphore_request) < 0) {
+			// If sem_wait fails we can't communicate effectively, so exit error couldn't be signaled
             perror("sem_wait (semaphore_request) failed on child");
-		    exit(EXIT_FAILURE);
         }
 		// Get line requested into the shared memory
     	sprintf(shared_stuff->shared_text, "%d", line);
@@ -83,7 +83,6 @@ int main(int argc, char* argv[]) {
 		// Wait for response
         if (sem_wait(semaphore_read_response) < 0) {
             perror("sem_wait (semaphore_read_response) failed on child");
-		    exit(EXIT_FAILURE);
         }
 		// Stop counting time
 		end = clock();
@@ -100,8 +99,12 @@ int main(int argc, char* argv[]) {
 	// Divide time by number of requests to get the average
 	average_time /= N;
 	// Print the average time
-	printf("Child process %d experienced an average response time of %fs.\n", getpid(), average_time);
-
+	if (N != 0) {
+		printf("Child process %d experienced an average response time of %fs.\n", getpid(), average_time);
+	}
+	else {
+		printf("Child process %d had no requests.\n", getpid());
+	}
 	/* CLosing semaphores */
     if (sem_close(semaphore_request) < 0) {
         perror("sem_close (semaphore_request) failed");

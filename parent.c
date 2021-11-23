@@ -12,7 +12,7 @@
 #include <sys/shm.h>
 
 #define ARG_BUFF 12
-#define MAX_LINE 1000
+#define MAX_LINE 100
 #define SEM_PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)
 
 struct shared_use_st {
@@ -21,13 +21,21 @@ struct shared_use_st {
 
 int main(int argc, char* argv[]) {
 	/* Initialising arguments */
+    if (argc != 4) {
+        fprintf(stderr, "invalid number of arguments\n");
+        exit(EXIT_FAILURE);
+    }
     char* X = argv[1];
     FILE* text_file = fopen(X,"rb");
     if (text_file == NULL) {
-        printf("fopen failed");
+        fprintf(stderr, "fopen failed\n");
         exit(EXIT_FAILURE);
     }
     int K = atoi(argv[2]), N = atoi(argv[3]);
+    if (K < 0 || N < 0) {
+        fprintf(stderr, "no negative arguments allowed\n");
+        exit(EXIT_FAILURE);
+    }
 
     /* Counting lines */
     char ch;
@@ -96,6 +104,18 @@ int main(int argc, char* argv[]) {
         if ((pid = fork()) == 0) {
             execv("./child", newargv);
             perror("exec failed");
+            // Communicate the error to the parent
+            // Wait for any other transaction then start a request
+            if (sem_wait(semaphore_request) < 0);
+            // Get error code into the shared memory
+            sprintf(shared_stuff->shared_text, "-1");
+            // Allow parent to respond
+            if (sem_post(semaphore_response) < 0);
+            // Wait for response
+            if (sem_wait(semaphore_read_response) < 0);
+            // Allow another child to start a transaction
+            if (sem_post(semaphore_request) < 0);
+            // Exit with failure
             exit(EXIT_FAILURE);
         }
         else if (pid < 0) {
@@ -126,9 +146,19 @@ int main(int argc, char* argv[]) {
         }
         // Read the line requested from the shared memory
         num_lines = atoi(shared_stuff->shared_text);
-        // Get that line into the shared memory
-        for (int j = 0 ; j <= num_lines ; j++) {
-            fgets(shared_stuff->shared_text, MAX_LINE, text_file);
+        // If requesting line
+        if (num_lines >= 0) {
+            // Get that line into the shared memory
+            for (int j = 0 ; j <= num_lines ; j++) {
+                fgets(shared_stuff->shared_text, MAX_LINE, text_file);
+            }
+        }
+        // If error signal
+        else {
+            // Stop waiting for the rest of the child requests
+            i += N;
+            // Respond that the error message was seen
+            sprintf(shared_stuff->shared_text, "OK");
         }
         // Allow reading of response
         if (sem_post(semaphore_read_response) < 0) {
